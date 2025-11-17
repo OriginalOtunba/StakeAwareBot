@@ -10,10 +10,10 @@ from telegram.ext import (
 )
 
 # === CONFIG ===
-TOKEN = os.getenv("RESULTS_BOT_TOKEN") or "8420983528:AAHwHqfre1y2KZzM0L86xEqyfZTQgHcz9h8"
-ADMIN_IDS = [6918185015]  # add more IDs for multiple admins
-DAILY_GROUP_ID = -1003251193566
-WEEKEND_GROUP_ID = -5017816925
+TOKEN = os.getenv("RESULTS_BOT_TOKEN") or "RESULTS_BOT_TOKEN"
+ADMIN_IDS = ["ADMIN_TELEGRAM_ID"]  # add more IDs for multiple admins
+DAILY_GROUP_ID = "DAILY_GROUP_ID"
+WEEKEND_GROUP_ID = "WEEKEND_GROUP_ID"
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
