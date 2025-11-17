@@ -3,7 +3,7 @@ import asyncio
 from telegram import Bot
 from dotenv import load_dotenv
 
-load_dotenv(dotenv_path=r"C:\StakeAwareBot\.env")
+load_dotenv()
 bot_token = os.environ.get("ACCESS_BOT_TOKEN")
 bot = Bot(token=bot_token)
 
@@ -17,3 +17,4 @@ async def get_chat_ids():
                 print(f"Numeric Chat ID: {chat.id}")
 
 asyncio.run(get_chat_ids())
+
