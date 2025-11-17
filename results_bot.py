@@ -11,9 +11,9 @@ from telegram.ext import (
 
 # === CONFIG ===
 TOKEN = os.getenv("RESULTS_BOT_TOKEN") or "RESULTS_BOT_TOKEN"
-ADMIN_IDS = ["ADMIN_TELEGRAM_ID"]  # add more IDs for multiple admins
-DAILY_GROUP_ID = "DAILY_GROUP_ID"
-WEEKEND_GROUP_ID = "WEEKEND_GROUP_ID"
+ADMIN_IDS = os.environ.get("ADMIN_TELEGRAM_ID")  # add more IDs for multiple admins
+DAILY_GROUP_ID = os.environ.get("DAILY_GROUP_ID")
+WEEKEND_GROUP_ID = os.environ.get("WEEKEND_GROUP_ID")
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
