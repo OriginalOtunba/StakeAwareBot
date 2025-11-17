@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-load_dotenv(r"C:\StakeAwareBot\.env")
+load_dotenv()
 
 MAIN_BOT_TOKEN = os.environ.get('MAIN_BOT_TOKEN')
 PAYSTACK_DAILY = os.environ.get('PAYSTACK_DAILY_LINK')
