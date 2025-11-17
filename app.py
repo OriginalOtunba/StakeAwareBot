@@ -12,7 +12,7 @@ from flask import Flask, request, jsonify
 
 import requests
 
-load_dotenv(r"C:\StakeAwareBot\.env")
+load_dotenv()
 
 APP_PORT = int(os.environ.get("FLASK_PORT", 5000))
 USERS_FILE = Path("data/users.json")
