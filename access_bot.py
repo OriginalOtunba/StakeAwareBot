@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, CallbackQueryHandler
 
-load_dotenv(r"C:\StakeAwareBot\.env")
+load_dotenv()
 
 ACCESS_BOT_TOKEN = os.environ.get("ACCESS_BOT_TOKEN")
 # Ensure this matches your actual backend public URL without trailing slash
