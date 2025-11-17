@@ -9,7 +9,7 @@ from telegram.ext import (
     ApplicationBuilder, CommandHandler, CallbackQueryHandler,
     MessageHandler, filters, ContextTypes, ConversationHandler
 )
-load_dotenv(r"C:\StakeAwareBot\.env")
+load_dotenv()
 # === CONFIG ===
 TOKEN = os.getenv("RESULTS_BOT_TOKEN") or "RESULTS_BOT_TOKEN"
 ADMIN_IDS = os.environ.get("ADMIN_TELEGRAM_ID")  # add more IDs for multiple admins
