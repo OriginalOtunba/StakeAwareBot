@@ -130,7 +130,7 @@ def webhook_handler():
     return "ok", 200
 
 
-def start_webhook():
+def start_main_bot():
     global telegram_app
 
     telegram_app = ApplicationBuilder().token(ACCESS_BOT_TOKEN).build()
@@ -148,10 +148,7 @@ def start_webhook():
 
 # -------------------- ENTRY POINT -------------------- #
 
-if __name__ == "__main__":
-    if not ACCESS_BOT_TOKEN:
-        print("❌ ACCESS_BOT_TOKEN missing")
-        exit()
+
 
     mode = os.environ.get("RUN_MODE", "webhook")
 
