@@ -62,7 +62,7 @@ def webhook_handler():
     return "ok", 200
 
 
-def start_webhook():
+def start_main_bot():
     global telegram_app
 
     telegram_app = ApplicationBuilder().token(MAIN_BOT_TOKEN).build()
@@ -74,10 +74,6 @@ def start_webhook():
     return telegram_app
 
 
-if __name__ == "__main__":
-    if not MAIN_BOT_TOKEN:
-        print("❌ MAIN_BOT_TOKEN missing")
-        exit()
 
     # Render uses webhook mode ─ local dev can still use polling if needed
     running = os.environ.get("RUN_MODE", "webhook")
