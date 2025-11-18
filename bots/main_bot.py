@@ -68,5 +68,5 @@ def start_main_bot():
     telegram_app = ApplicationBuilder().token(MAIN_BOT_TOKEN).build()
     telegram_app.add_handler(CommandHandler("start", start))
     print("Setting webhook:", WEBHOOK_URL + "/main_bot")
-    telegram_app.bot.set_webhook(url=WEBHOOK_URL + "/main_bot")
+    telegram_app.bot.set_webhook(url=WEBHOOK_URL)
     return telegram_app
