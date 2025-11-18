@@ -63,7 +63,7 @@ def webhook_handler():
     return "ok", 200
 
 # ================= START TELEGRAM APP =================
-async def start_webhook():
+async def start_main_bot():
     global telegram_app
 
     telegram_app = ApplicationBuilder().token(MAIN_BOT_TOKEN).build()
