@@ -336,20 +336,20 @@ threading.Thread(target=expiry_checker, daemon=True).start()
 # ----------------------------------------------------
 # START ALL BOTS (MAIN, RESULTS, ACCESS) IN THREADS
 # ----------------------------------------------------
-from bots.main_bot import start_main_bot
-from bots.results_bot import start_results_bot
-from bots.subscriber_bot import start_access_bot
+from bots.main_bot import main_bot
+from bots.results_bot import results_bot
+from bots.subscriber_bot import access_bot
 
 
 def run_bots():
     # Main Access Bot
-    threading.Thread(target=start_main_bot, daemon=True).start()
+    threading.Thread(target=main_bot, daemon=True).start()
 
     # Results Posting Bot
-    threading.Thread(target=start_results_bot, daemon=True).start()
+    threading.Thread(target=results_bot, daemon=True).start()
 
     # Subscriber Synchronisation Bot
-    threading.Thread(target=start_access_bot, daemon=True).start()
+    threading.Thread(target=access_bot, daemon=True).start()
 
 
 
