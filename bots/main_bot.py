@@ -1,4 +1,5 @@
 import os
+import asyncio
 from dotenv import load_dotenv
 from flask import Flask, request
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -6,16 +7,18 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 load_dotenv()
 
+# ================= CONFIG =================
 MAIN_BOT_TOKEN = os.environ.get("MAIN_BOT_TOKEN")
 PAYSTACK_DAILY = os.environ.get("PAYSTACK_DAILY_LINK")
 PAYSTACK_WEEKEND = os.environ.get("PAYSTACK_WEEKEND_LINK")
 ACCESS_BOT_USERNAME = os.environ.get("ACCESS_BOT_USERNAME")
-WEBHOOK_URL = os.environ.get("WEBHOOK_URL")  # e.g., https://stakeaware.onrender.com/main_bot
+WEBHOOK_URL = os.environ.get("WEBHOOK_URL")  # e.g. https://stakeawarebot.onrender.com/main_bot
 
+# ================= FLASK =================
 app = Flask(__name__)
-telegram_app = None  # Will hold python-telegram-bot instance
+telegram_app = None  # Will hold the telegram Application instance
 
-
+# ================= TELEGRAM HANDLERS =================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         "Stake Aware provides daily 3-odds tickets based on deep analysis of sports trends and statistics.\n\n"
@@ -44,29 +47,37 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown"
     )
 
-
-# ---------------- WEBHOOK HANDLER ---------------- #
+# ================= FLASK WEBHOOK =================
 @app.route("/main_bot", methods=["POST"])
 def webhook_handler():
     if telegram_app is None:
         return "Bot not ready", 503
+
     try:
         update = Update.de_json(request.get_json(force=True), telegram_app.bot)
         telegram_app.update_queue.put_nowait(update)
     except Exception as e:
         print("Webhook error:", e)
         return "error", 400
+
     return "ok", 200
 
-
-def start_main_bot():
+# ================= START TELEGRAM APP =================
+async def start_webhook():
     global telegram_app
+
+    telegram_app = ApplicationBuilder().token(MAIN_BOT_TOKEN).build()
+    telegram_app.add_handler(CommandHandler("start", start))
+
+    print("Setting webhook:", WEBHOOK_URL)
+    await telegram_app.bot.set_webhook(url=WEBHOOK_URL)
+
+# ================= MAIN =================
+if __name__ == "__main__":
     if not MAIN_BOT_TOKEN:
         print("❌ MAIN_BOT_TOKEN missing")
         exit()
 
-    telegram_app = ApplicationBuilder().token(MAIN_BOT_TOKEN).build()
-    telegram_app.add_handler(CommandHandler("start", start))
-    print("Setting webhook:", WEBHOOK_URL + "/main_bot")
-    telegram_app.bot.set_webhook(url=WEBHOOK_URL)
-    return telegram_app
+    # Run webhook async then start Flask
+    asyncio.run(start_webhook())
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
