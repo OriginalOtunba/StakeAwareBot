@@ -334,11 +334,11 @@ def expiry_checker():
 threading.Thread(target=expiry_checker, daemon=True).start()
 
 # ----------------------------------------------------
-# START ALL BOTS (MAIN, RESULTS, SUBSCRIBER) IN THREADS
+# START ALL BOTS (MAIN, RESULTS, ACCESS) IN THREADS
 # ----------------------------------------------------
 from bots.main_bot import start_main_bot
 from bots.results_bot import start_results_bot
-from bots.subscriber_bot import start_subscriber_bot
+from bots.subscriber_bot import start_access_bot
 
 
 def run_bots():
@@ -349,7 +349,7 @@ def run_bots():
     threading.Thread(target=start_results_bot, daemon=True).start()
 
     # Subscriber Synchronisation Bot
-    threading.Thread(target=start_subscriber_bot, daemon=True).start()
+    threading.Thread(target=start_access_bot, daemon=True).start()
 
 
 
