@@ -158,7 +158,7 @@ def main():
     )
 
     app.add_handler(conv_handler)
-
+   print("✅ Results Bot running...")
     app.run_polling()
 
 if __name__ == "__main__":
