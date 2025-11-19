@@ -1,6 +1,7 @@
 # bots/main_bot.py
 import os
-from aiogram import types
+from aiogram import types, F
+from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 PAYSTACK_DAILY = os.getenv("PAYSTACK_DAILY_LINK")
@@ -8,13 +9,13 @@ PAYSTACK_WEEKEND = os.getenv("PAYSTACK_WEEKEND_LINK")
 ACCESS_BOT_USERNAME = os.getenv("ACCESS_BOT_USERNAME", "StakeAwareAccessBot")
 
 def register_handlers(dp, bot):
-    dp.message.register(start_cmd, commands=["start"])
+    # Aiogram 3.x way to filter /start command
+    dp.message.register(start_cmd, Command(commands=["start"]))
 
 async def start_cmd(message: types.Message):
     builder = InlineKeyboardBuilder()
     builder.button(text="💎 Daily 3-Odds — ₦50,000", url=PAYSTACK_DAILY)
     builder.button(text="🎯 Weekend 3-Odds — ₦20,000", url=PAYSTACK_WEEKEND)
-    # We will use deep-link that user clicks after payment: /start <reference>
     builder.button(text="✅ Verify Access", url=f"https://t.me/{ACCESS_BOT_USERNAME}")
     keyboard = builder.as_markup()
 
