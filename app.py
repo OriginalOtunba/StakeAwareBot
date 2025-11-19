@@ -3,15 +3,15 @@ import asyncio
 import aiohttp
 from dotenv import load_dotenv
 from aiohttp import web
+from aiogram import Bot, Dispatcher
 
 load_dotenv()
 PORT = int(os.getenv("PORT", 10000))
 
-# import bots (they expose `register(dispatcher, bot)` functions)
+# import bots (they expose register_handlers(dp, bot))
 from bots import main_bot, access_bot, results_bot
-from aiogram import Bot, Dispatcher
 
-# create Bot+Dispatcher instances for each bot token
+# Bot tokens
 MAIN_TOKEN = os.getenv("MAIN_BOT_TOKEN")
 ACCESS_TOKEN = os.getenv("ACCESS_BOT_TOKEN")
 RESULTS_TOKEN = os.getenv("RESULTS_BOT_TOKEN")
@@ -28,9 +28,9 @@ async def start_webserver():
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', PORT)
     await site.start()
-    print(f"Webserver running on port {PORT}")
+    print(f"🌐 Webserver running on port {PORT}")
 
-    # self-ping (keep free services awake)
+    # self-ping to keep Render free plan alive
     async def self_ping():
         url = f"http://127.0.0.1:{PORT}/"
         while True:
@@ -46,27 +46,24 @@ async def start_webserver():
 async def start_bots():
     # MAIN BOT
     main_bot_bot = Bot(token=MAIN_TOKEN)
-    main_dp = Dispatcher()
+    main_dp = Dispatcher(main_bot_bot)
     main_bot.register_handlers(main_dp, main_bot_bot)
-    bots.append(("main", main_dp, main_bot_bot))
+    bots.append(("main", main_dp))
 
     # ACCESS BOT
     access_bot_bot = Bot(token=ACCESS_TOKEN)
-    access_dp = Dispatcher()
+    access_dp = Dispatcher(access_bot_bot)
     access_bot.register_handlers(access_dp, access_bot_bot)
-    bots.append(("access", access_dp, access_bot_bot))
+    bots.append(("access", access_dp))
 
     # RESULTS BOT
     results_bot_bot = Bot(token=RESULTS_TOKEN)
-    results_dp = Dispatcher()
+    results_dp = Dispatcher(results_bot_bot)
     results_bot.register_handlers(results_dp, results_bot_bot)
-    bots.append(("results", results_dp, results_bot_bot))
+    bots.append(("results", results_dp))
 
-    # Start polling for each dispatcher concurrently
-    tasks = []
-    for name, dp, bot in bots:
-        print(f"Starting polling for: {name}")
-        tasks.append(dp.start_polling(bot))
+    # Start polling for all dispatchers concurrently
+    tasks = [dp.start_polling() for name, dp in bots]
     await asyncio.gather(*tasks)
 
 async def main():
