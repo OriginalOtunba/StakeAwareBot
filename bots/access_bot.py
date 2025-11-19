@@ -1,85 +1,69 @@
+# bots/access_bot.py
 import os
-import requests
 import json
-import threading
-from datetime import datetime
-from dotenv import load_dotenv
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
+import requests
+from aiogram import types
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-load_dotenv()
+BACKEND_BASE = os.getenv("BACKEND_BASE_URL")
+BACKEND_ADMIN_KEY = os.getenv("BACKEND_ADMIN_KEY", "")
 
-ACCESS_BOT_TOKEN = os.environ.get("ACCESS_BOT_TOKEN")
-BACKEND_BASE_URL = os.environ.get("BACKEND_BASE_URL")  # e.g., https://your-render-app.onrender.com
 USERS_FILE = "data/users.json"
+os.makedirs("data", exist_ok=True)
 
-def load_users():
+def _load_users():
     try:
         with open(USERS_FILE, "r") as f:
             return json.load(f)
-    except:
+    except Exception:
         return {}
 
-def save_users(u):
+def _save_users(u):
     with open(USERS_FILE, "w") as f:
         json.dump(u, f, indent=2)
 
-def datetime_from_ts(ts):
-    try:
-        return datetime.utcfromtimestamp(int(ts)).strftime("%Y-%m-%d %H:%M:%S")
-    except:
-        return str(ts)
+def register_handlers(dp, bot):
+    dp.message.register(start_cmd, commands=["start"])
+    dp.message.register(status_cmd, commands=["status"])
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id
-    args = context.args  # deep-link param: paystack reference
-    keyboard = [[InlineKeyboardButton("ℹ️ Check Status", callback_data="status")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
+async def start_cmd(message: types.Message):
+    # Aiogram: message.get_args() returns the deep-link argument if present
+    args = message.get_args()
+    keyboard = InlineKeyboardBuilder().button(text="ℹ️ Check Status", callback_data="status").as_markup()
     if args:
-        ref = args[0]
+        ref = args.strip()
         try:
-            url = f"{BACKEND_BASE_URL}/link_telegram"
-            resp = requests.post(url, json={"reference": ref, "chat_id": chat_id}, timeout=10)
+            resp = requests.post(f"{BACKEND_BASE}/link_telegram", json={"reference": ref, "chat_id": message.chat.id}, timeout=8)
             if resp.status_code == 200:
-                await update.message.reply_text("✅ Payment reference linked.", reply_markup=reply_markup)
+                await message.answer("✅ Payment reference linked. You now have access if the payment is valid.", reply_markup=keyboard)
                 return
             else:
-                await update.message.reply_text(f"❌ Could not link reference: {resp.text}", reply_markup=reply_markup)
+                await message.answer(f"❌ Could not link reference: {resp.text}", reply_markup=keyboard)
                 return
         except Exception as e:
-            await update.message.reply_text(f"❌ Backend error: {e}", reply_markup=reply_markup)
+            await message.answer(f"❌ Error connecting to backend: {e}", reply_markup=keyboard)
             return
 
-    await update.message.reply_text(
-        "Welcome to StakeAware Access Bot. Use the button below to check /status.",
-        reply_markup=reply_markup
+    await message.answer(
+        "Welcome to StakeAware Access Bot.\n\nIf you completed payment, open the verification link from the payment page (it should open this bot with a reference). "
+        "You can also use /status to check your subscription.",
+        reply_markup=keyboard
     )
 
-async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id
+async def status_cmd(message: types.Message):
     try:
-        resp = requests.get(f"{BACKEND_BASE_URL}/admin/users", timeout=10)
+        headers = {}
+        if BACKEND_ADMIN_KEY:
+            headers["x-admin-key"] = BACKEND_ADMIN_KEY
+        resp = requests.get(f"{BACKEND_BASE}/admin/users", headers=headers, timeout=8)
         if resp.status_code != 200:
-            await update.message.reply_text("Could not fetch status from backend.")
+            await message.answer("Could not fetch status from backend.")
             return
         users = resp.json()
         for email, u in users.items():
-            if u.get("chat_id") == chat_id:
-                await update.message.reply_text(
-                    f"✅ Plan: {u.get('plan')} | Expires (UTC): {datetime_from_ts(u.get('expires_at'))}"
-                )
+            if int(u.get("chat_id", 0)) == message.chat.id:
+                await message.answer(f"✅ Active plan: {u.get('plan')} | Expires at (UTC): {u.get('expires_at')}")
                 return
-        await update.message.reply_text("❌ No active subscription found.")
+        await message.answer("❌ No active subscription found for this account.")
     except Exception as e:
-        await update.message.reply_text(f"Error: {e}")
-
-def run_bot():
-    if not ACCESS_BOT_TOKEN:
-        print("ACCESS_BOT_TOKEN missing")
-        return
-    app = ApplicationBuilder().token(ACCESS_BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("status", status))
-    print("Access Bot running...")
-    app.run_polling()
+        await message.answer(f"Error fetching status: {e}")
