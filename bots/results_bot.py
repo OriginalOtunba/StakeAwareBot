@@ -1,11 +1,11 @@
 # bots/results_bot.py
 import os
-import math
 from datetime import datetime
 from aiogram import types
+from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-ADMIN_IDS = [int(x) for x in os.getenv("ADMIN_TELEGRAM_IDS","").split(",") if x.strip()]
+ADMIN_IDS = [int(x) for x in os.getenv("ADMIN_TELEGRAM_IDS", "").split(",") if x.strip()]
 DAILY_GROUP_ID = int(os.getenv("DAILY_GROUP_ID", "0"))
 WEEKEND_GROUP_ID = int(os.getenv("WEEKEND_GROUP_ID", "0"))
 DAILY_GROUP_LINK = os.getenv("DAILY_GROUP_LINK")
@@ -14,12 +14,7 @@ WEEKEND_GROUP_LINK = os.getenv("WEEKEND_GROUP_LINK")
 # in-memory store (cleared after posting)
 games = []
 
-def register_handlers(dp, bot):
-    dp.message.register(start_cmd, commands=["start"])
-    dp.callback_query.register(handle_menu, lambda c: True)  # generic, check inside
-    dp.message.register(add_game_message, lambda m: m.text and m.reply_to_message and m.reply_to_message.text and "Send the game" in m.reply_to_message.text)
-
-def _is_admin(user_id):
+def _is_admin(user_id: int) -> bool:
     return user_id in ADMIN_IDS
 
 def main_menu_kb():
@@ -29,6 +24,11 @@ def main_menu_kb():
     kb.button(text="📤 Post Games", callback_data="post_games")
     kb.button(text="🗑️ Clear Games", callback_data="clear_games")
     return kb.as_markup()
+
+def register_handlers(dp, bot):
+    dp.message.register(start_cmd, Command(commands=["start"]))
+    dp.callback_query.register(handle_menu)
+    dp.message.register(add_game_message, lambda m: m.text and m.reply_to_message and m.reply_to_message.text and "Send the game" in m.reply_to_message.text)
 
 async def start_cmd(message: types.Message):
     if not _is_admin(message.from_user.id):
@@ -44,7 +44,10 @@ async def handle_menu(callback: types.CallbackQuery):
         return
 
     if data == "add_game":
-        await callback.message.edit_text("Send the game in this format:\nTeamA vs TeamB TYPE - 1.55 odds\n\nReply the message with your game text.", reply_markup=main_menu_kb())
+        await callback.message.edit_text(
+            "Send the game in this format:\nTeamA vs TeamB TYPE - 1.55 odds\n\nReply the message with your game text.",
+            reply_markup=main_menu_kb()
+        )
         await callback.answer()
         return
 
@@ -64,13 +67,11 @@ async def handle_menu(callback: types.CallbackQuery):
         if not games:
             await callback.answer("No games to post.", show_alert=True)
             return
+
         msg = format_games_list()
-        day = datetime.now().weekday()  # Monday=0 .. Sunday=6
-        targets = []
-        # Daily always gets posts except weekend logic says weekend only? As per your request:
-        # daily group should receive daily; weekend group only Fri-Sun (4,5,6)
-        targets.append(DAILY_GROUP_ID)
-        if day in [4,5,6]:
+        day = datetime.utcnow().weekday()  # Monday=0 .. Sunday=6
+        targets = [DAILY_GROUP_ID]
+        if day in [4, 5, 6]:  # Fri-Sun
             targets.append(WEEKEND_GROUP_ID)
 
         sent = 0
@@ -87,11 +88,9 @@ async def handle_menu(callback: types.CallbackQuery):
         return
 
 async def add_game_message(message: types.Message):
-    # Admin replies to the prompt message created by add_game button
     if not _is_admin(message.from_user.id):
         return
     text = message.text.strip()
-    # Validate simple pattern and optionally extract odds for total
     games.append(text)
     await message.reply(f"✅ Game added:\n*{text}*", parse_mode="Markdown")
 
@@ -102,25 +101,19 @@ def format_games_list():
     lines = ["🎯 *STAKEAWARE OFFICIAL PREDICTION FOR THE DAY*\n"]
     total = 1.0
     for i, g in enumerate(games, start=1):
-        # try to extract last numeric token as odds
         toks = g.strip().split()
         odds = None
-        try:
-            # take last token that can be parsed to float
-            for t in reversed(toks):
-                try:
-                    odds = float(t.replace(",", "."))
-                    break
-                except:
-                    continue
-            if odds:
-                total *= odds
-        except:
-            odds = None
-
+        for t in reversed(toks):
+            try:
+                odds = float(t.replace(",", "."))
+                break
+            except:
+                continue
+        if odds:
+            total *= odds
         lines.append(f"{i}. *{g}*")
 
-    total_text = f"{total:.2f}" if total and total != 1.0 else "—"
+    total_text = f"{total:.2f}" if total != 1.0 else "—"
     lines.append(f"\n💰 *Total Odds:* {total_text}")
     lines.append("\n🔥 Play Responsibly 🔥")
     return "\n".join(lines)
