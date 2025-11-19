@@ -3,21 +3,19 @@ import asyncio
 import aiohttp
 from dotenv import load_dotenv
 from aiohttp import web
-from aiogram import Bot, Dispatcher
 
-# Load environment variables
 load_dotenv()
 PORT = int(os.getenv("PORT", 10000))
 
-# Import your bots
+# import bots (they expose `register_handlers(dp, bot)` functions)
 from bots import main_bot, access_bot, results_bot
+from aiogram import Bot, Dispatcher
 
 # Bot tokens
 MAIN_TOKEN = os.getenv("MAIN_BOT_TOKEN")
 ACCESS_TOKEN = os.getenv("ACCESS_BOT_TOKEN")
 RESULTS_TOKEN = os.getenv("RESULTS_BOT_TOKEN")
 
-# Storage for bot instances
 bots = []
 
 async def start_webserver():
@@ -32,7 +30,7 @@ async def start_webserver():
     await site.start()
     print(f"🌐 Webserver running on port {PORT}")
 
-    # Self-ping to keep Render free instance awake
+    # self-ping to keep free services awake
     async def self_ping():
         url = f"http://127.0.0.1:{PORT}/"
         while True:
@@ -48,28 +46,27 @@ async def start_webserver():
 async def start_bots():
     # MAIN BOT
     main_bot_instance = Bot(token=MAIN_TOKEN)
-    main_dp = Dispatcher()
+    main_dp = Dispatcher(main_bot_instance)
     main_bot.register_handlers(main_dp, main_bot_instance)
     bots.append(("main", main_dp, main_bot_instance))
 
     # ACCESS BOT
     access_bot_instance = Bot(token=ACCESS_TOKEN)
-    access_dp = Dispatcher()
+    access_dp = Dispatcher(access_bot_instance)
     access_bot.register_handlers(access_dp, access_bot_instance)
     bots.append(("access", access_dp, access_bot_instance))
 
     # RESULTS BOT
     results_bot_instance = Bot(token=RESULTS_TOKEN)
-    results_dp = Dispatcher()
+    results_dp = Dispatcher(results_bot_instance)
     results_bot.register_handlers(results_dp, results_bot_instance)
     bots.append(("results", results_dp, results_bot_instance))
 
     # Start polling concurrently for all bots
     tasks = []
-    for name, dp, bot_instance in bots:
+    for name, dp, _ in bots:
         print(f"🚀 Starting polling for: {name}")
-        tasks.append(dp.start_polling(bot=bot_instance))
-
+        tasks.append(dp.start_polling())  # no bot argument needed
     await asyncio.gather(*tasks)
 
 async def main():
@@ -80,4 +77,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("🛑 Shutting down bots")
+        print("🛑 Shutting down")
