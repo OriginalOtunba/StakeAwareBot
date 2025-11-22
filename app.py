@@ -1,80 +1,71 @@
 import os
-import asyncio
-import aiohttp
+import json
+import hmac
+import hashlib
+from flask import Flask, request, jsonify
 from dotenv import load_dotenv
-from aiohttp import web
+
+from bots.results_bot import results_dispatcher, RESULTS_BOT_TOKEN
+from bots.access_bot import access_dispatcher, ACCESS_BOT_TOKEN
 
 load_dotenv()
-PORT = int(os.getenv("PORT", 10000))
 
-# import bots (they expose `register_handlers(dp, bot)` functions)
-from bots import main_bot, access_bot, results_bot
-from aiogram import Bot, Dispatcher
+app = Flask(__name__)
 
-# Bot tokens
-MAIN_TOKEN = os.getenv("MAIN_BOT_TOKEN")
-ACCESS_TOKEN = os.getenv("ACCESS_BOT_TOKEN")
-RESULTS_TOKEN = os.getenv("RESULTS_BOT_TOKEN")
+PAYSTACK_WEBHOOK_SECRET = os.getenv("PAYSTACK_WEBHOOK_SECRET", "")
+BOT_TOKENS = {
+    RESULTS_BOT_TOKEN: results_dispatcher,
+    ACCESS_BOT_TOKEN: access_dispatcher
+}
 
-bots = []
+# ------------------------
+# PAYSTACK WEBHOOK
+# ------------------------
+@app.route("/paystack/webhook", methods=["POST"])
+def paystack_webhook():
+    signature = request.headers.get("X-Paystack-Signature")
+    body = request.get_data()
 
-async def start_webserver():
-    async def handle(request):
-        return web.Response(text="🤖 StakeAware unified runner (aiohttp)")
+    expected = hmac.new(
+        PAYSTACK_WEBHOOK_SECRET.encode(),
+        body,
+        hashlib.sha512
+    ).hexdigest()
 
-    app = web.Application()
-    app.add_routes([web.get('/', handle)])
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', PORT)
-    await site.start()
-    print(f"🌐 Webserver running on port {PORT}")
+    if signature != expected:
+        return jsonify({"status": "invalid signature"}), 401
 
-    # self-ping to keep free services awake
-    async def self_ping():
-        url = f"http://127.0.0.1:{PORT}/"
-        while True:
-            try:
-                async with aiohttp.ClientSession() as session:
-                    await session.get(url, timeout=5)
-            except Exception:
-                pass
-            await asyncio.sleep(600)
+    data = request.json
+    # You can extend this logic anytime
+    print("Paystack Event:", data)
 
-    asyncio.create_task(self_ping())
+    return jsonify({"status": "success"}), 200
 
-async def start_bots():
-    # MAIN BOT
-    main_bot_instance = Bot(token=MAIN_TOKEN)
-    main_dp = Dispatcher(main_bot_instance)
-    main_bot.register_handlers(main_dp, main_bot_instance)
-    bots.append(("main", main_dp, main_bot_instance))
 
-    # ACCESS BOT
-    access_bot_instance = Bot(token=ACCESS_TOKEN)
-    access_dp = Dispatcher(access_bot_instance)
-    access_bot.register_handlers(access_dp, access_bot_instance)
-    bots.append(("access", access_dp, access_bot_instance))
+# ------------------------
+# TELEGRAM BOT WEBHOOKS
+# ------------------------
+@app.route("/results-bot-webhook", methods=["POST"])
+async def results_webhook():
+    update_data = request.get_json(force=True)
+    await results_dispatcher.feed_webhook_update(update_data)
+    return jsonify({"status": "ok"}), 200
 
-    # RESULTS BOT
-    results_bot_instance = Bot(token=RESULTS_TOKEN)
-    results_dp = Dispatcher(results_bot_instance)
-    results_bot.register_handlers(results_dp, results_bot_instance)
-    bots.append(("results", results_dp, results_bot_instance))
 
-    # Start polling concurrently for all bots
-    tasks = []
-    for name, dp, _ in bots:
-        print(f"🚀 Starting polling for: {name}")
-        tasks.append(dp.start_polling())  # no bot argument needed
-    await asyncio.gather(*tasks)
+@app.route("/access-bot-webhook", methods=["POST"])
+async def access_webhook():
+    update_data = request.get_json(force=True)
+    await access_dispatcher.feed_webhook_update(update_data)
+    return jsonify({"status": "ok"}), 200
 
-async def main():
-    await start_webserver()
-    await start_bots()
+
+# ------------------------
+# HEALTH CHECK
+# ------------------------
+@app.route("/", methods=["GET"])
+def home():
+    return "StakeAware Bot Server Running", 200
+
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("🛑 Shutting down")
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
